@@ -1,0 +1,627 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  BUYER
+  DEALER
+  ADMIN
+  DEVELOPER
+  MANAGER
+  SALES_AGENT
+  MODERATOR
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  SOLD
+  HIDDEN
+  RESERVED
+  ARCHIVED
+  PENDING_DELETION
+  DELETED
+  EXPIRED
+  REJECTED
+}
+
+enum SellerAccountStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  NONE
+}
+
+enum PaymentMethodType {
+  STANDARD_BANK
+  NATIONAL_BANK
+  MPAMBA
+  AIRTEL_MONEY
+}
+
+enum SubscriptionPaymentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  REGISTRATION_APPROVED
+  REGISTRATION_REJECTED
+  LISTING_SUBMITTED
+  LISTING_APPROVED
+  LISTING_REJECTED
+  LISTING_CHANGES_REQUESTED
+  LISTING_HIDDEN
+  LISTING_REMOVED
+  DELETION_REQUESTED
+  DELETION_APPROVED
+  DELETION_REJECTED
+  PAYMENT_SUBMITTED
+  PAYMENT_CONFIRMED
+  PAYMENT_REJECTED
+  TRIAL_ENDING_7
+  TRIAL_ENDING_3
+  SUBSCRIPTION_EXPIRED
+  ADMIN_NEW_SELLER
+  ADMIN_NEW_LISTING
+  ADMIN_DELETION_REQUEST
+  ADMIN_PAYMENT_PROOF
+}
+
+enum SellerType {
+  PRIVATE
+  DEALER
+}
+
+enum Transmission {
+  MANUAL
+  AUTOMATIC
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  HYBRID
+  ELECTRIC
+}
+
+enum Drivetrain {
+  TWO_WD
+  FOUR_WD
+  AWD
+}
+
+enum BodyType {
+  SEDAN
+  HATCHBACK
+  SUV
+  PICKUP
+  VAN
+  MINIBUS
+  WAGON
+  COUPE
+  TRUCK
+  MOTORCYCLE
+}
+
+enum SaleCondition {
+  NEW
+  FOREIGN_USED
+  LOCALLY_USED
+  FOR_PARTS
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  ACTIONED
+}
+
+enum PhotoCategory {
+  OUTER_VIEW
+  SEATS
+  DASHBOARD
+  SUNROOF
+  INSTRUMENT_CLUSTER
+  STEERING_WHEEL
+  BOOTSPACE
+  GEAR
+  HEAD_LIGHT_TAIL_LIGHTS
+  DOORS_AND_CONTROLS
+  AC
+  AIRBAGS
+  CHARGING_PORTS
+  STORAGE
+  EXTERIOR_CLOSEUPS
+  OTHER
+}
+
+model District {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  listings Listing[]
+}
+
+model User {
+  id                String    @id @default(cuid())
+  phone             String    @unique
+  name              String?
+  email             String?   @unique
+  role              UserRole  @default(BUYER)
+  active            Boolean   @default(true)
+  phoneVerifiedAt   DateTime?
+  idVerifiedAt      DateTime?
+  createdAt         DateTime  @default(now())
+
+  sellerAccount     SellerAccount?
+  listings          Listing[]
+  favorites         Favorite[]
+  savedSearches     SavedSearch[]
+  sentMessages      Message[]        @relation("MessageSender")
+  buyerConvos       Conversation[]   @relation("ConversationBuyer")
+  sellerConvos      Conversation[]   @relation("ConversationSeller")
+  reviewsGiven      Review[]         @relation("ReviewAuthor")
+  reviewsReceived   Review[]         @relation("ReviewSubject")
+  reports           Report[]
+  modelPhotoUploads ModelPhoto[]
+  notifications     Notification[]
+  deletionRequests  ListingDeletionRequest[] @relation("DeletionRequestedBy")
+  resolvedDeletions ListingDeletionRequest[] @relation("DeletionResolvedBy")
+  confirmedPayments SubscriptionPayment[]    @relation("PaymentConfirmedBy")
+  settingsUpdates   SiteSettingsHistory[]    @relation("SettingsChangedBy")
+  pageViews         PageView[]
+  searchLogs        SearchLog[]
+  backupsCreated    Backup[]                 @relation("BackupCreatedBy")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+model SellerAccount {
+  id                    String              @id @default(cuid())
+  userId                String              @unique
+  user                  User                @relation(fields: [userId], references: [id])
+  businessName          String
+  registrationNumber    String?
+  verified              Boolean             @default(false)
+  logoUrl               String?
+  description           String?
+  district              String?
+
+  status                SellerAccountStatus @default(PENDING_APPROVAL)
+  rejectionReason       String?
+  suspendedAt           DateTime?
+
+  trialEndsAt           DateTime?
+  trial7DayNoticeSentAt DateTime?
+  trial3DayNoticeSentAt DateTime?
+  subscriptionStatus    SubscriptionStatus  @default(NONE)
+  subscriptionExpiresAt DateTime?
+
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  payments              SubscriptionPayment[]
+
+  @@index([status])
+}
+
+model SubscriptionPlan {
+  id           String   @id @default(cuid())
+  name         String
+  priceMwk     Int
+  durationDays Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  payments     SubscriptionPayment[]
+}
+
+model PaymentMethod {
+  id            String            @id @default(cuid())
+  type          PaymentMethodType
+  label         String
+  accountName   String?
+  accountNumber String?
+  phoneNumber   String?
+  instructions  String?
+  enabled       Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  payments      SubscriptionPayment[]
+}
+
+model SubscriptionPayment {
+  id              String                    @id @default(cuid())
+  sellerAccountId String
+  sellerAccount   SellerAccount             @relation(fields: [sellerAccountId], references: [id], onDelete: Cascade)
+  planId          String?
+  plan            SubscriptionPlan?         @relation(fields: [planId], references: [id])
+  paymentMethodId String?
+  paymentMethod   PaymentMethod?            @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  amountMwk       Int
+  proofUrl        String
+  status          SubscriptionPaymentStatus @default(PENDING)
+  notes           String?
+  submittedAt     DateTime                  @default(now())
+  confirmedAt     DateTime?
+  confirmedById   String?
+  confirmedBy     User?                     @relation("PaymentConfirmedBy", fields: [confirmedById], references: [id])
+
+  @@index([status])
+}
+
+model ListingDeletionRequest {
+  id           String                 @id @default(cuid())
+  listingId    String
+  listing      Listing                @relation(fields: [listingId], references: [id])
+  sellerId     String
+  seller       User                   @relation("DeletionRequestedBy", fields: [sellerId], references: [id])
+  reason       String?
+  previousStatus ListingStatus
+  status       DeletionRequestStatus  @default(PENDING)
+  requestedAt  DateTime               @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?                  @relation("DeletionResolvedBy", fields: [resolvedById], references: [id])
+
+  @@index([status])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  body      String
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+
+  @@index([userId, readAt])
+}
+
+model Brand {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  slug        String      @unique
+  originCountry String?
+  logoUrl     String?
+  history     String?
+  createdAt   DateTime    @default(now())
+  models      CarModel[]
+}
+
+model CarModel {
+  id                     String   @id @default(cuid())
+  brandId                String
+  brand                  Brand    @relation(fields: [brandId], references: [id])
+  name                   String
+  slug                   String
+  yearStart              Int
+  yearEnd                Int?
+  bodyType               BodyType
+  fuelType               FuelType
+  drivetrain             Drivetrain
+  engineCc               Int?
+  seating                Int?
+  description            String?
+  strengths              String?
+  faults                 String?
+  partAvailabilityRating Int?     // 1-5, community-rated
+  isClassic              Boolean  @default(false)
+  baseValueMwk           Int?     // fallback estimated value when there's no listing history yet
+  createdAt              DateTime @default(now())
+
+  photos     ModelPhoto[]
+  listings   Listing[]
+
+  @@unique([brandId, slug])
+  @@index([isClassic])
+}
+
+model ModelPhoto {
+  id           String    @id @default(cuid())
+  carModelId   String
+  carModel     CarModel  @relation(fields: [carModelId], references: [id])
+  url          String
+  caption      String?
+  submittedById String?
+  submittedBy  User?     @relation(fields: [submittedById], references: [id])
+  approved     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+}
+
+model Listing {
+  id            String        @id @default(cuid())
+  sellerId      String
+  seller        User          @relation(fields: [sellerId], references: [id])
+  sellerType    SellerType    @default(PRIVATE)
+  carModelId    String?
+  carModel      CarModel?     @relation(fields: [carModelId], references: [id])
+
+  title         String
+  brandName     String
+  modelName     String
+  year          Int
+  priceMwk      Int
+  mileageKm     Int
+  transmission  Transmission
+  fuelType      String?
+  bodyType      String?
+  engineCc      Int?
+  seating       Int?
+  drivetrain    Drivetrain?
+  saleCondition SaleCondition @default(FOREIGN_USED)
+  condition     String
+  description   String?
+  videoUrl      String?
+
+  districtId    String?
+  district      District?     @relation(fields: [districtId], references: [id])
+
+  status        ListingStatus @default(DRAFT)
+  reviewNotes   String?
+  featured      Boolean       @default(false)
+  featuredUntil DateTime?
+  boosted       Boolean       @default(false)
+  viewCount     Int           @default(0)
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  expiresAt     DateTime?
+
+  photos            ListingPhoto[]
+  favorites         Favorite[]
+  conversations     Conversation[]
+  reports           Report[]
+  deletionRequests  ListingDeletionRequest[]
+
+  @@unique([sellerId, title])
+  @@index([status])
+  @@index([brandName, modelName])
+  @@index([districtId])
+  @@index([saleCondition])
+}
+
+model ListingPhoto {
+  id        String        @id @default(cuid())
+  listingId String
+  listing   Listing       @relation(fields: [listingId], references: [id])
+  url       String
+  category  PhotoCategory @default(OTHER)
+  position  Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  @@index([listingId, category])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+}
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  label     String
+  criteria  Json
+  notifyBySms Boolean @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  listingId String
+  listing   Listing   @relation(fields: [listingId], references: [id])
+  buyerId   String
+  buyer     User      @relation("ConversationBuyer", fields: [buyerId], references: [id])
+  sellerId  String
+  seller    User      @relation("ConversationSeller", fields: [sellerId], references: [id])
+  createdAt DateTime  @default(now())
+  messages  Message[]
+
+  @@unique([listingId, buyerId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  body           String
+  createdAt      DateTime     @default(now())
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  authorId    String
+  author      User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  subjectId   String
+  subject     User     @relation("ReviewSubject", fields: [subjectId], references: [id])
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+}
+
+model Report {
+  id        String       @id @default(cuid())
+  listingId String
+  listing   Listing      @relation(fields: [listingId], references: [id])
+  reporterId String
+  reporter  User         @relation(fields: [reporterId], references: [id])
+  reason    String
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  phone     String
+  success   Boolean
+  reason    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([createdAt])
+}
+
+/// Singleton row (id is always "singleton") holding site-wide branding, contact,
+/// and configuration data managed through the Developer Panel.
+model SiteSettings {
+  id                     String   @id @default("singleton")
+
+  siteName               String   @default("Halesah Galimoto Hub")
+  tagline                String?
+  logoUrl                String?
+  faviconUrl             String?
+  primaryColor           String   @default("#137d54")
+  secondaryColor         String   @default("#0D2A4A")
+  fontFamily             String   @default("Inter")
+
+  contactEmail           String?
+  contactPhone           String?
+  whatsappNumber         String?
+  address                String?
+  companyName            String?
+  registrationNumber     String?
+
+  currency               String   @default("MWK")
+  timezone               String   @default("Africa/Blantyre")
+  taxRatePercent         Float?
+
+  maintenanceMode        Boolean  @default(false)
+  maintenanceMessage     String?
+
+  facebookUrl            String?
+  twitterUrl             String?
+  instagramUrl           String?
+  tiktokUrl              String?
+
+  smtpHost               String?
+  smtpPort               Int?
+  smtpUsername           String?
+  smtpPassword           String?
+  smtpFromEmail          String?
+
+  notifyEmailEnabled     Boolean  @default(true)
+  notifyWhatsappEnabled  Boolean  @default(true)
+
+  updatedAt              DateTime @updatedAt
+}
+
+model SiteSettingsHistory {
+  id          String   @id @default(cuid())
+  snapshot    Json
+  changedById String?
+  changedBy   User?    @relation("SettingsChangedBy", fields: [changedById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model HomepageSection {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  title     String?
+  subtitle  String?
+  ctaLabel  String?
+  ctaHref   String?
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  path      String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  ipAddress String?
+  userAgent String?
+  referrer  String?
+  createdAt DateTime @default(now())
+
+  @@index([path])
+  @@index([createdAt])
+}
+
+model SearchLog {
+  id           String   @id @default(cuid())
+  query        String
+  resultsCount Int?
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+enum BackupType {
+  DATABASE
+  MEDIA
+  CONFIG
+}
+
+enum BackupStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model Backup {
+  id            String       @id @default(cuid())
+  type          BackupType
+  status        BackupStatus @default(PENDING)
+  filename      String
+  sizeBytes     Int?
+  errorMessage  String?
+  createdById   String?
+  createdBy     User?        @relation("BackupCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime     @default(now())
+
+  @@index([createdAt])
+}
