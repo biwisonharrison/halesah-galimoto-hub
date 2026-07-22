@@ -140,3 +140,4 @@ Only pursue this one if you specifically want Cloudflare's edge network; otherwi
 - **Want to stay closest to "how Next.js is meant to run"?** → Vercel — the Blob store lives in the same dashboard.
 - **Want full control / already comfortable with servers?** → a plain VPS.
 - **Avoid Cloudflare Pages/Workers** unless you specifically need edge deployment — it's the most work of everything on this list for this particular codebase.
+<!-- redeploy trigger -->
