@@ -6,6 +6,7 @@ const SECTION_LABELS: Record<string, string> = {
   featured: "Featured listings",
   budget: "Popular cars by budget",
   brands: "Browse by brand",
+  reviews: "Customer reviews",
 };
 
 export default async function HomepageSectionsPage() {

@@ -7,12 +7,14 @@ export default function ListingActions({
   listingId,
   isLoggedIn,
   initiallyFavorited,
-  sellerPhone,
+  whatsappNumber,
+  callPhoneNumber,
 }: {
   listingId: string;
   isLoggedIn: boolean;
   initiallyFavorited: boolean;
-  sellerPhone: string;
+  whatsappNumber: string;
+  callPhoneNumber: string;
 }) {
   const router = useRouter();
   const [favorited, setFavorited] = useState(initiallyFavorited);
@@ -48,7 +50,7 @@ export default function ListingActions({
     setBusy(false);
   }
 
-  const whatsappHref = `https://wa.me/${sellerPhone.replace("+", "")}?text=${encodeURIComponent(
+  const whatsappHref = `https://wa.me/${whatsappNumber.replace("+", "")}?text=${encodeURIComponent(
     "Hi, I saw your car listing on Halesah Galimoto Hub. Is it still available?"
   )}`;
 
@@ -60,10 +62,10 @@ export default function ListingActions({
         rel="noreferrer"
         className="block rounded-lg bg-brand-600 px-4 py-3 text-center font-semibold text-white hover:bg-brand-700"
       >
-        Message on WhatsApp
+        Chat on WhatsApp
       </a>
       <a
-        href={`tel:${sellerPhone}`}
+        href={`tel:${callPhoneNumber}`}
         className="block rounded-lg border border-gray-300 px-4 py-3 text-center font-semibold text-ink hover:bg-gray-50"
       >
         Call seller

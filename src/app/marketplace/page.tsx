@@ -19,7 +19,11 @@ export default async function MarketplacePage({ searchParams }: { searchParams: 
     prisma.listing.findMany({
       where,
       orderBy: buildListingOrderBy(searchParams.sort),
-      include: { district: true, photos: true, seller: { select: { phone: true } } },
+      include: {
+        district: true,
+        photos: true,
+        seller: { select: { phone: true, sellerAccount: { select: { whatsappNumber: true, callPhoneNumber: true } } } },
+      },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),

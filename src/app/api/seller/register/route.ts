@@ -3,12 +3,15 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { notifyAllAdmins } from "@/lib/notifications";
+import { normalizeMalawiPhone } from "@/lib/phone";
 
 const bodySchema = z.object({
   businessName: z.string().trim().min(2).max(120),
   registrationNumber: z.string().trim().max(60).optional(),
   district: z.string().trim().max(60).optional(),
   description: z.string().trim().max(1000).optional(),
+  whatsappNumber: z.string().trim().max(20).optional(),
+  callPhoneNumber: z.string().trim().max(20).optional(),
 });
 
 export async function POST(req: Request) {
@@ -25,6 +28,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Check your application details." }, { status: 400 });
   }
 
+  const whatsappNumber = parsed.data.whatsappNumber ? normalizeMalawiPhone(parsed.data.whatsappNumber) : null;
+  if (parsed.data.whatsappNumber && !whatsappNumber) {
+    return NextResponse.json({ error: "WhatsApp number doesn't look like a valid Malawian number." }, { status: 400 });
+  }
+  const callPhoneNumber = parsed.data.callPhoneNumber ? normalizeMalawiPhone(parsed.data.callPhoneNumber) : null;
+  if (parsed.data.callPhoneNumber && !callPhoneNumber) {
+    return NextResponse.json({ error: "Call number doesn't look like a valid Malawian number." }, { status: 400 });
+  }
+
   await prisma.sellerAccount.create({
     data: {
       userId: user.id,
@@ -32,6 +44,8 @@ export async function POST(req: Request) {
       registrationNumber: parsed.data.registrationNumber,
       district: parsed.data.district,
       description: parsed.data.description,
+      whatsappNumber,
+      callPhoneNumber,
     },
   });
 

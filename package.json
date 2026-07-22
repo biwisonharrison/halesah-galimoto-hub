@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"
@@ -16,11 +18,14 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.1092.0",
+    "@aws-sdk/client-sns": "^3.1092.0",
+    "@azure/communication-sms": "^1.2.0-beta.4",
     "@prisma/client": "^5.20.0",
-    "@vercel/blob": "^2.6.1",
     "clsx": "^2.1.1",
     "jose": "^5.9.6",
     "next": "14.2.15",
+    "nodemailer": "^9.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "server-only": "^0.0.1",
@@ -28,6 +33,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.16.11",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",

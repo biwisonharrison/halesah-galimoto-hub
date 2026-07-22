@@ -5,29 +5,50 @@ import ListingCard from "@/components/ListingCard";
 import CategoryTabs from "@/components/CategoryTabs";
 import BudgetShortcuts from "@/components/BudgetShortcuts";
 import BrandGrid from "@/components/BrandGrid";
+import ReviewsCarousel from "@/components/ReviewsCarousel";
 import { getHomepageSections, HOMEPAGE_SECTION_DEFAULTS } from "@/lib/homepageSections";
 
 async function getHomeData() {
-  const [featuredListings, districts, brands, sections] = await Promise.all([
+  const [featuredListings, districts, brands, sections, reviews] = await Promise.all([
     prisma.listing.findMany({
       where: { status: "ACTIVE", featured: true },
-      include: { district: true, photos: true, seller: { select: { phone: true } } },
+      include: {
+        district: true,
+        photos: true,
+        seller: { select: { phone: true, sellerAccount: { select: { whatsappNumber: true, callPhoneNumber: true } } } },
+      },
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
     prisma.district.findMany({ orderBy: { name: "asc" } }),
     prisma.brand.findMany({ orderBy: { name: "asc" } }),
     getHomepageSections(),
+    prisma.review.findMany({
+      where: { status: "APPROVED" },
+      include: { author: { select: { name: true } }, subject: { select: { name: true, sellerAccount: { select: { businessName: true } } } } },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
   ]);
 
+  const testimonials = reviews.map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    title: r.title,
+    comment: r.comment,
+    authorName: r.displayAnonymously ? "Anonymous" : r.author.name ?? "Anonymous",
+    sellerName: r.subject ? r.subject.sellerAccount?.businessName ?? r.subject.name ?? null : null,
+  }));
+
   const sectionMap = new Map(sections.map((s) => [s.key, s]));
-  const orderedKeys = ["featured", "budget", "brands"].filter((key) => {
+  const orderedKeys = ["featured", "budget", "brands", "reviews"].filter((key) => {
+    if (key === "reviews" && testimonials.length === 0) return false;
     const section = sectionMap.get(key);
     return !section || section.enabled;
   });
   orderedKeys.sort((a, b) => (sectionMap.get(a)?.sortOrder ?? 0) - (sectionMap.get(b)?.sortOrder ?? 0));
 
-  return { featuredListings, districts, brands, sectionMap, orderedKeys };
+  return { featuredListings, districts, brands, sectionMap, orderedKeys, testimonials };
 }
 
 function sectionText(sectionMap: Map<string, HomepageSection>, key: string) {
@@ -42,7 +63,7 @@ function sectionText(sectionMap: Map<string, HomepageSection>, key: string) {
 }
 
 export default async function HomePage() {
-  const { featuredListings, districts, brands, sectionMap, orderedKeys } = await getHomeData();
+  const { featuredListings, districts, brands, sectionMap, orderedKeys, testimonials } = await getHomeData();
   const hero = sectionText(sectionMap, "hero");
 
   const sectionRenderers: Record<string, () => React.ReactNode> = {
@@ -81,14 +102,32 @@ export default async function HomePage() {
     brands: () => {
       const text = sectionText(sectionMap, "brands");
       return (
-        <BrandGrid
-          key="brands"
-          brands={brands.map((b) => ({ slug: b.slug, name: b.name, logoUrl: b.logoUrl }))}
-          title={text.title}
-          subtitle={text.subtitle}
-          ctaLabel={text.ctaLabel}
-          ctaHref={text.ctaHref}
-        />
+        <div key="brands" className="hidden sm:block">
+          <BrandGrid
+            brands={brands.map((b) => ({ slug: b.slug, name: b.name, logoUrl: b.logoUrl }))}
+            title={text.title}
+            subtitle={text.subtitle}
+            ctaLabel={text.ctaLabel}
+            ctaHref={text.ctaHref}
+          />
+        </div>
+      );
+    },
+    reviews: () => {
+      const text = sectionText(sectionMap, "reviews");
+      return (
+        <section key="reviews" className="mx-auto hidden max-w-6xl px-4 py-12 sm:block">
+          <div className="mb-6 text-center">
+            <h2 className="text-xl font-bold text-ink">{text.title}</h2>
+            {text.subtitle && <p className="mt-1 text-gray-600">{text.subtitle}</p>}
+          </div>
+          <ReviewsCarousel reviews={testimonials} />
+          <div className="mt-6 text-center">
+            <Link href={text.ctaHref} className="text-sm font-medium text-brand-700 hover:underline">
+              {text.ctaLabel} →
+            </Link>
+          </div>
+        </section>
       );
     },
   };

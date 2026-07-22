@@ -39,12 +39,20 @@ export default async function AdminSellersPage() {
               {seller.status === "REJECTED" && seller.rejectionReason && (
                 <p className="mt-1 text-xs text-red-600">Reason: {seller.rejectionReason}</p>
               )}
+              <p className="mt-1 text-xs text-gray-400">
+                WhatsApp: {seller.whatsappNumber ?? "not set"} · Call: {seller.callPhoneNumber ?? "not set"}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLES[seller.status]}`}>
                 {seller.status.replace(/_/g, " ")}
               </span>
-              <AdminSellerActions sellerAccountId={seller.id} status={seller.status} />
+              <AdminSellerActions
+                sellerAccountId={seller.id}
+                status={seller.status}
+                whatsappNumber={seller.whatsappNumber}
+                callPhoneNumber={seller.callPhoneNumber}
+              />
             </div>
           </div>
         ))}

@@ -19,6 +19,7 @@ const DEVELOPER_NAV = [
   { href: "/developer/logins", label: "Login activity" },
   { href: "/developer/backups", label: "Backups" },
   { href: "/developer/settings", label: "System settings" },
+  { href: "/developer/otp", label: "OTP Configuration" },
 ];
 
 export default async function DeveloperLayout({ children }: { children: React.ReactNode }) {

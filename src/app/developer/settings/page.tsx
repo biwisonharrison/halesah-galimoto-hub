@@ -4,8 +4,6 @@ import SystemSettingsForm from "@/components/developer/SystemSettingsForm";
 
 export default async function SystemSettingsPage() {
   const settings = await getSiteSettings();
-  const otpProvider = process.env.OTP_PROVIDER ?? "console";
-  const africasTalkingConfigured = Boolean(process.env.AFRICASTALKING_API_KEY);
 
   return (
     <div>
@@ -60,17 +58,12 @@ export default async function SystemSettingsPage() {
       <h2 className="mt-10 text-sm font-semibold uppercase tracking-wide text-gray-400">API keys &amp; integrations</h2>
       <div className="mt-2 rounded-xl border border-gray-800 bg-gray-900 p-4 text-sm text-gray-300">
         <p>
-          OTP delivery provider: <span className="font-medium text-white">{otpProvider}</span>
-          {otpProvider === "africastalking" && (
-            <span className={africasTalkingConfigured ? "ml-2 text-emerald-400" : "ml-2 text-red-400"}>
-              ({africasTalkingConfigured ? "API key configured" : "API key missing"})
-            </span>
-          )}
-        </p>
-        <p className="mt-2 text-xs text-gray-500">
-          SMS and other third-party API keys are set via environment variables (<code>.env</code>) on the server, not
-          through this page — that keeps them out of the database and out of anything a browser ever loads. Ask
-          whoever manages the server to update <code>.env</code> and restart the app to change them.
+          OTP delivery (SMS, WhatsApp, and email verification codes) is fully configured from the{" "}
+          <Link href="/developer/otp" className="text-emerald-400 hover:underline">
+            OTP Configuration
+          </Link>{" "}
+          page — providers, credentials, templates, rate limits, and delivery logs all live in the database there,
+          not in environment variables.
         </p>
       </div>
     </div>

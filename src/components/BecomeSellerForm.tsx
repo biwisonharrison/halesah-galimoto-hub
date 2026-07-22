@@ -9,6 +9,8 @@ export default function BecomeSellerForm() {
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [district, setDistrict] = useState("");
   const [description, setDescription] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [callPhoneNumber, setCallPhoneNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -26,6 +28,8 @@ export default function BecomeSellerForm() {
           registrationNumber: registrationNumber || undefined,
           district: district || undefined,
           description: description || undefined,
+          whatsappNumber: whatsappNumber || undefined,
+          callPhoneNumber: callPhoneNumber || undefined,
         }),
       });
       const data = await res.json();
@@ -88,6 +92,31 @@ export default function BecomeSellerForm() {
           className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
         />
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-ink">WhatsApp number (optional)</label>
+          <input
+            type="tel"
+            value={whatsappNumber}
+            onChange={(e) => setWhatsappNumber(e.target.value)}
+            placeholder="e.g. 0991234567"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-ink">Call phone number (optional)</label>
+          <input
+            type="tel"
+            value={callPhoneNumber}
+            onChange={(e) => setCallPhoneNumber(e.target.value)}
+            placeholder="e.g. 0881234567"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-gray-500">
+        Leave these blank to use your account&apos;s login number for buyer calls/WhatsApp. You can add or change them anytime from your dashboard.
+      </p>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button
         type="submit"

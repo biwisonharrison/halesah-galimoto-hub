@@ -35,6 +35,13 @@ export const HOMEPAGE_SECTION_DEFAULTS: Record<
     ctaLabel: "Full brand catalogue",
     ctaHref: "/brands",
   },
+  reviews: {
+    sortOrder: 4,
+    title: "What our customers say",
+    subtitle: "Real feedback from buyers and sellers on Halesah Galimoto Hub.",
+    ctaLabel: "View all reviews",
+    ctaHref: "/reviews",
+  },
 };
 
 /** Fetches all homepage sections, creating any missing default rows on first use. */

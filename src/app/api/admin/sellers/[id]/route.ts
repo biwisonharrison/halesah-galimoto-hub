@@ -4,14 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { notify } from "@/lib/notifications";
 import { TRIAL_DURATION_DAYS } from "@/lib/seller";
+import { normalizeMalawiPhone } from "@/lib/phone";
 
 const patchSchema = z.object({
-  action: z.enum(["approve", "reject", "suspend", "reactivate", "edit"]),
+  action: z.enum(["approve", "reject", "suspend", "reactivate", "edit", "clear-contact"]),
   rejectionReason: z.string().trim().max(500).optional(),
   businessName: z.string().trim().min(2).max(120).optional(),
   registrationNumber: z.string().trim().max(60).optional(),
   district: z.string().trim().max(60).optional(),
   description: z.string().trim().max(1000).optional(),
+  whatsappNumber: z.string().trim().max(20).optional(),
+  callPhoneNumber: z.string().trim().max(20).optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -46,6 +49,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   } else if (data.action === "reactivate") {
     await prisma.sellerAccount.update({ where: { id: account.id }, data: { status: "APPROVED", suspendedAt: null } });
   } else if (data.action === "edit") {
+    let whatsappNumber = account.whatsappNumber;
+    if (data.whatsappNumber !== undefined) {
+      whatsappNumber = data.whatsappNumber ? normalizeMalawiPhone(data.whatsappNumber) : null;
+      if (data.whatsappNumber && !whatsappNumber) {
+        return NextResponse.json({ error: "WhatsApp number doesn't look like a valid Malawian number." }, { status: 400 });
+      }
+    }
+    let callPhoneNumber = account.callPhoneNumber;
+    if (data.callPhoneNumber !== undefined) {
+      callPhoneNumber = data.callPhoneNumber ? normalizeMalawiPhone(data.callPhoneNumber) : null;
+      if (data.callPhoneNumber && !callPhoneNumber) {
+        return NextResponse.json({ error: "Call number doesn't look like a valid Malawian number." }, { status: 400 });
+      }
+    }
     await prisma.sellerAccount.update({
       where: { id: account.id },
       data: {
@@ -53,7 +70,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         registrationNumber: data.registrationNumber,
         district: data.district,
         description: data.description,
+        whatsappNumber,
+        callPhoneNumber,
       },
+    });
+  } else if (data.action === "clear-contact") {
+    await prisma.sellerAccount.update({
+      where: { id: account.id },
+      data: { whatsappNumber: null, callPhoneNumber: null },
     });
   }
 

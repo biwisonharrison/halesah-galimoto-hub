@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatMWK, timeAgo } from "@/lib/format";
 import { ensureSellerSubscriptionCurrent, daysRemaining, hasActiveAccess } from "@/lib/seller";
 import DashboardListingActions from "@/components/DashboardListingActions";
+import SellerContactForm from "@/components/SellerContactForm";
 
 export const metadata = { title: "Your dashboard · Halesah Galimoto Hub" };
 
@@ -112,6 +113,10 @@ export default async function DashboardPage() {
             <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Reason: {freshAccount.rejectionReason}</p>
           )}
         </div>
+      )}
+
+      {freshAccount && (
+        <SellerContactForm whatsappNumber={freshAccount.whatsappNumber} callPhoneNumber={freshAccount.callPhoneNumber} />
       )}
 
       {account && (

@@ -1,5 +1,7 @@
+import type { PhotoCategory } from "@prisma/client";
+
 export interface PhotoCategoryOption {
-  value: string;
+  value: PhotoCategory;
   label: string;
 }
 
@@ -22,9 +24,9 @@ export const PHOTO_CATEGORIES: PhotoCategoryOption[] = [
   { value: "OTHER", label: "Other" },
 ];
 
-export const PHOTO_CATEGORY_VALUES = PHOTO_CATEGORIES.map((c) => c.value) as [string, ...string[]];
+export const PHOTO_CATEGORY_VALUES = PHOTO_CATEGORIES.map((c) => c.value) as [PhotoCategory, ...PhotoCategory[]];
 
-export const REQUIRED_PHOTO_CATEGORIES = ["OUTER_VIEW", "SEATS", "DASHBOARD"];
+export const REQUIRED_PHOTO_CATEGORIES: PhotoCategory[] = ["OUTER_VIEW", "SEATS", "DASHBOARD"];
 
 export const MAX_IMAGES_PER_CATEGORY = 5;
 export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;

@@ -14,6 +14,7 @@ export default function LoginForm() {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [rememberDevice, setRememberDevice] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [devHint, setDevHint] = useState<string | null>(null);
@@ -30,6 +31,11 @@ export default function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      if (data.skippedOtp) {
+        router.push(redirectTo);
+        router.refresh();
+        return;
+      }
       setPhone(data.phone);
       setStep("code");
       setDevHint(
@@ -52,7 +58,7 @@ export default function LoginForm() {
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code, name: name || undefined }),
+        body: JSON.stringify({ phone, code, name: name || undefined, rememberDevice }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
@@ -120,6 +126,10 @@ export default function LoginForm() {
           className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
         />
       </div>
+      <label className="flex items-center gap-2 text-sm text-gray-600">
+        <input type="checkbox" checked={rememberDevice} onChange={(e) => setRememberDevice(e.target.checked)} />
+        Remember this device — skip the code next time I log in here
+      </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button
         type="submit"

@@ -39,6 +39,8 @@ export default async function AdminUsersPage() {
                     isSeller={Boolean(user.sellerAccount)}
                     sellerVerified={Boolean(user.sellerAccount?.verified)}
                     isAdmin={user.role === "ADMIN"}
+                    currentPhone={user.phone}
+                    currentName={user.name}
                   />
                 </td>
               </tr>

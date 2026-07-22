@@ -174,8 +174,16 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
             listingId={listing.id}
             isLoggedIn={Boolean(user)}
             initiallyFavorited={alreadyFavorited}
-            sellerPhone={listing.seller.phone}
+            whatsappNumber={listing.seller.sellerAccount?.whatsappNumber || listing.seller.phone}
+            callPhoneNumber={listing.seller.sellerAccount?.callPhoneNumber || listing.seller.phone}
           />
+
+          <Link
+            href={`/reviews/new?listingId=${listing.id}`}
+            className="block text-center text-xs text-gray-400 hover:text-gray-600 hover:underline"
+          >
+            Leave a review for this seller
+          </Link>
 
           <Link href="/safety-guide" className="block text-center text-xs text-gray-400 hover:text-gray-600 hover:underline">
             Read the safety guide before you buy
