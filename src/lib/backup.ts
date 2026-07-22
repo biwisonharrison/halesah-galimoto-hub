@@ -1,8 +1,9 @@
 import "server-only";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdir, stat, unlink, readFile, writeFile } from "node:fs/promises";
+import { mkdir, rm, stat, unlink, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { list } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings, updateSiteSettings } from "@/lib/siteSettings";
 import type { Backup } from "@prisma/client";
@@ -10,7 +11,6 @@ import type { Backup } from "@prisma/client";
 const execFileAsync = promisify(execFile);
 
 export const BACKUP_DIR = path.join(process.cwd(), "backups");
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
@@ -67,20 +67,51 @@ export async function createConfigBackup(createdById?: string): Promise<Backup> 
   }
 }
 
+/**
+ * Media lives in Vercel Blob now, not local disk, so a media backup means
+ * downloading every blob and re-packing it into a tar.gz — same archive
+ * format as before, just sourced from Blob instead of public/uploads. For a
+ * large media library this can take a while and use real memory/bandwidth
+ * inside a single request; that's an existing tradeoff of this backup
+ * design (pg_dump has the same "runs to completion in one request" shape).
+ */
+async function downloadBlobsInto(destDir: string): Promise<number> {
+  let count = 0;
+  let cursor: string | undefined;
+  do {
+    const page = await list({ cursor, limit: 1000 });
+    for (const blob of page.blobs) {
+      const res = await fetch(blob.url);
+      if (!res.ok) continue;
+      const bytes = Buffer.from(await res.arrayBuffer());
+      const destPath = path.join(destDir, blob.pathname);
+      await mkdir(path.dirname(destPath), { recursive: true });
+      await writeFile(destPath, bytes);
+      count++;
+    }
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+  return count;
+}
+
 export async function createMediaBackup(createdById?: string): Promise<Backup> {
   await mkdir(BACKUP_DIR, { recursive: true });
   const filename = `media-${timestamp()}.tar.gz`;
   const record = await prisma.backup.create({ data: { type: "MEDIA", filename, createdById } });
 
+  const stagingDir = path.join(BACKUP_DIR, `.media-staging-${record.id}`);
   try {
-    await mkdir(UPLOADS_DIR, { recursive: true });
+    await mkdir(stagingDir, { recursive: true });
+    await downloadBlobsInto(stagingDir);
     const filePath = path.join(BACKUP_DIR, filename);
-    await execFileAsync("tar", ["-czf", filePath, "-C", path.dirname(UPLOADS_DIR), "uploads"]);
+    await execFileAsync("tar", ["-czf", filePath, "-C", stagingDir, "."]);
     const sizeBytes = await fileSize(filePath);
     return prisma.backup.update({ where: { id: record.id }, data: { status: "COMPLETED", sizeBytes } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Media archive failed.";
     return prisma.backup.update({ where: { id: record.id }, data: { status: "FAILED", errorMessage: message.slice(0, 500) } });
+  } finally {
+    await rm(stagingDir, { recursive: true, force: true }).catch(() => null);
   }
 }
 

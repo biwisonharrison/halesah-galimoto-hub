@@ -25,7 +25,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   if (backup.type === "MEDIA") {
-    return NextResponse.json({ error: "Media archives must be restored manually by extracting them into public/uploads." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Media archives must be restored manually: extract the archive, then re-upload each file to the Vercel Blob store, preserving its original pathname (e.g. `vercel blob put <file> --pathname <pathname>`, or via the Vercel dashboard)." },
+      { status: 400 },
+    );
   }
 
   try {
