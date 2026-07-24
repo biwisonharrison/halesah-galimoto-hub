@@ -22,7 +22,10 @@ type NotificationType =
   | "ADMIN_NEW_SELLER"
   | "ADMIN_NEW_LISTING"
   | "ADMIN_DELETION_REQUEST"
-  | "ADMIN_PAYMENT_PROOF";
+  | "ADMIN_PAYMENT_PROOF"
+  | "SELLER_SHARING_ENABLED"
+  | "SELLER_SHARING_DISABLED"
+  | "SELLER_SHARING_SUSPENDED";
 
 /**
  * Sends a notification to a user and logs it to their in-app notification feed.

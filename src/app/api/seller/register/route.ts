@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { notifyAllAdmins } from "@/lib/notifications";
 import { normalizeMalawiPhone } from "@/lib/phone";
+import { generateSellerSlug } from "@/lib/sellerSlug";
 
 const bodySchema = z.object({
   businessName: z.string().trim().min(2).max(120),
@@ -37,6 +38,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Call number doesn't look like a valid Malawian number." }, { status: 400 });
   }
 
+  const slug = await generateSellerSlug(parsed.data.businessName);
+
   await prisma.sellerAccount.create({
     data: {
       userId: user.id,
@@ -46,6 +49,7 @@ export async function POST(req: Request) {
       description: parsed.data.description,
       whatsappNumber,
       callPhoneNumber,
+      slug,
     },
   });
 

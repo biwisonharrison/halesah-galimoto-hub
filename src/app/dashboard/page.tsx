@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatMWK, timeAgo } from "@/lib/format";
 import { ensureSellerSubscriptionCurrent, daysRemaining, hasActiveAccess } from "@/lib/seller";
+import { getSellerSharingSettings } from "@/lib/sellerSharingSettings";
+import { generateSellerSlug } from "@/lib/sellerSlug";
 import DashboardListingActions from "@/components/DashboardListingActions";
 import SellerContactForm from "@/components/SellerContactForm";
+import ShareInventoryButton from "@/components/ShareInventoryButton";
+import InventorySharingCard from "@/components/InventorySharingCard";
 
 export const metadata = { title: "Your dashboard · Halesah Galimoto Hub" };
 
@@ -31,7 +36,14 @@ export default async function DashboardPage() {
     await ensureSellerSubscriptionCurrent(account.id);
   }
 
-  const freshAccount = account ? await prisma.sellerAccount.findUnique({ where: { id: account.id } }) : null;
+  let freshAccount = account ? await prisma.sellerAccount.findUnique({ where: { id: account.id } }) : null;
+
+  if (freshAccount && !freshAccount.slug) {
+    const slug = await generateSellerSlug(freshAccount.businessName, freshAccount.id);
+    freshAccount = await prisma.sellerAccount.update({ where: { id: freshAccount.id }, data: { slug } });
+  }
+
+  const sharingSettings = await getSellerSharingSettings();
 
   const [listings, notifications, payments] = await Promise.all([
     prisma.listing.findMany({
@@ -60,18 +72,50 @@ export default async function DashboardPage() {
   const totalViews = listings.reduce((sum, l) => sum + l.viewCount, 0);
   const totalSaves = listings.reduce((sum, l) => sum + l._count.favorites, 0);
 
+  const requiresVerification = sharingSettings.securityRequireVerification && freshAccount && !freshAccount.verified;
+  const canShare = Boolean(
+    freshAccount && sharingSettings.enabled && freshAccount.sharingStatus === "ENABLED" && !requiresVerification
+  );
+  const shareBlockedReason = requiresVerification
+    ? "Your account needs to be verified before you can share your inventory."
+    : "Inventory sharing has been disabled by the site administrator.";
+  const host = (await headers()).get("host") ?? "localhost:3000";
+  const origin = `${host.startsWith("localhost") ? "http" : "https"}://${host}`;
+  const shareUrl = freshAccount?.slug ? `${origin}/${sharingSettings.urlPrefix}/${freshAccount.slug}` : "";
+  const shareAllowed = {
+    allowCopyLink: sharingSettings.allowCopyLink,
+    allowWhatsappShare: sharingSettings.allowWhatsappShare,
+    allowFacebookShare: sharingSettings.allowFacebookShare,
+    allowTwitterShare: sharingSettings.allowTwitterShare,
+    allowTelegramShare: sharingSettings.allowTelegramShare,
+    allowEmailShare: sharingSettings.allowEmailShare,
+    allowNativeShare: sharingSettings.allowNativeShare,
+  };
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-ink">Your dashboard</h1>
           <p className="mt-1 text-gray-600">{user.name ?? user.phone}</p>
         </div>
-        {freshAccount && hasActiveAccess(freshAccount) && (
-          <Link href="/sell" className="rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700">
-            + New listing
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {canShare && freshAccount?.slug && (
+            <ShareInventoryButton
+              slug={freshAccount.slug}
+              url={shareUrl}
+              businessName={freshAccount.businessName}
+              allowed={shareAllowed}
+              label="Share Inventory"
+              className="rounded-lg border border-gray-300 px-5 py-2.5 font-semibold text-ink hover:bg-gray-50"
+            />
+          )}
+          {freshAccount && hasActiveAccess(freshAccount) && (
+            <Link href="/sell" className="rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700">
+              + New listing
+            </Link>
+          )}
+        </div>
       </div>
 
       {!account && (
@@ -117,6 +161,31 @@ export default async function DashboardPage() {
 
       {freshAccount && (
         <SellerContactForm whatsappNumber={freshAccount.whatsappNumber} callPhoneNumber={freshAccount.callPhoneNumber} />
+      )}
+
+      {freshAccount && (
+        <InventorySharingCard
+          canShare={canShare}
+          blockedReason={shareBlockedReason}
+          slug={freshAccount.slug}
+          url={shareUrl}
+          businessName={freshAccount.businessName}
+          allowed={shareAllowed}
+          stats={{
+            pageViews: freshAccount.shareLinkPageViews,
+            shareClicks: freshAccount.shareLinkShareClicks,
+            whatsappClicks: freshAccount.shareLinkWhatsappClicks,
+            phoneClicks: freshAccount.shareLinkPhoneClicks,
+            listingClicks: freshAccount.shareLinkListingClicks,
+          }}
+          analyticsToggles={{
+            pageViews: sharingSettings.analyticsPageViews,
+            shareCounts: sharingSettings.analyticsShareCounts,
+            whatsappClicks: sharingSettings.analyticsWhatsappClicks,
+            phoneClicks: sharingSettings.analyticsPhoneClicks,
+            listingClicks: sharingSettings.analyticsListingClicks,
+          }}
+        />
       )}
 
       {account && (

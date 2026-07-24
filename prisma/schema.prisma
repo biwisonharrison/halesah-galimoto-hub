@@ -38,6 +38,12 @@ enum SellerAccountStatus {
   SUSPENDED
 }
 
+enum SellerSharingStatus {
+  ENABLED
+  DISABLED
+  SUSPENDED
+}
+
 enum SubscriptionStatus {
   TRIAL
   ACTIVE
@@ -92,6 +98,9 @@ enum NotificationType {
   ADMIN_NEW_LISTING
   ADMIN_DELETION_REQUEST
   ADMIN_PAYMENT_PROOF
+  SELLER_SHARING_ENABLED
+  SELLER_SHARING_DISABLED
+  SELLER_SHARING_SUSPENDED
 }
 
 enum SellerType {
@@ -170,41 +179,42 @@ model District {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  phone             String    @unique
-  name              String?
-  email             String?   @unique
-  role              UserRole  @default(BUYER)
-  active            Boolean   @default(true)
-  phoneVerifiedAt   DateTime?
-  idVerifiedAt      DateTime?
-  createdAt         DateTime  @default(now())
+  id              String    @id @default(cuid())
+  phone           String    @unique
+  name            String?
+  email           String?   @unique
+  role            UserRole  @default(BUYER)
+  active          Boolean   @default(true)
+  phoneVerifiedAt DateTime?
+  idVerifiedAt    DateTime?
+  createdAt       DateTime  @default(now())
 
-  sellerAccount     SellerAccount?
-  listings          Listing[]
-  favorites         Favorite[]
-  savedSearches     SavedSearch[]
-  sentMessages      Message[]        @relation("MessageSender")
-  buyerConvos       Conversation[]   @relation("ConversationBuyer")
-  sellerConvos      Conversation[]   @relation("ConversationSeller")
-  reviewsGiven      Review[]         @relation("ReviewAuthor")
-  reviewsReceived   Review[]         @relation("ReviewSubject")
-  reports           Report[]
-  modelPhotoUploads ModelPhoto[]
-  notifications     Notification[]
-  deletionRequests  ListingDeletionRequest[] @relation("DeletionRequestedBy")
-  resolvedDeletions ListingDeletionRequest[] @relation("DeletionResolvedBy")
-  confirmedPayments SubscriptionPayment[]    @relation("PaymentConfirmedBy")
-  settingsUpdates   SiteSettingsHistory[]    @relation("SettingsChangedBy")
-  pageViews         PageView[]
-  searchLogs        SearchLog[]
-  backupsCreated    Backup[]                 @relation("BackupCreatedBy")
-  otpDeliveryLogs   OtpDeliveryLog[]         @relation("OtpLogUser")
-  otpVerifications  OtpVerificationLog[]     @relation("OtpVerificationUser")
-  otpAuditActions   OtpAuditLog[]            @relation("OtpAuditActor")
-  otpSettingsEdits  OtpSettings[]            @relation("OtpSettingsUpdatedBy")
-  trustedDevices    TrustedDevice[]
-  authPolicyEdits   AuthPolicySettings[]     @relation("AuthPolicyUpdatedBy")
+  sellerAccount              SellerAccount?
+  listings                   Listing[]
+  favorites                  Favorite[]
+  savedSearches              SavedSearch[]
+  sentMessages               Message[]                @relation("MessageSender")
+  buyerConvos                Conversation[]           @relation("ConversationBuyer")
+  sellerConvos               Conversation[]           @relation("ConversationSeller")
+  reviewsGiven               Review[]                 @relation("ReviewAuthor")
+  reviewsReceived            Review[]                 @relation("ReviewSubject")
+  reports                    Report[]
+  modelPhotoUploads          ModelPhoto[]
+  notifications              Notification[]
+  deletionRequests           ListingDeletionRequest[] @relation("DeletionRequestedBy")
+  resolvedDeletions          ListingDeletionRequest[] @relation("DeletionResolvedBy")
+  confirmedPayments          SubscriptionPayment[]    @relation("PaymentConfirmedBy")
+  settingsUpdates            SiteSettingsHistory[]    @relation("SettingsChangedBy")
+  pageViews                  PageView[]
+  searchLogs                 SearchLog[]
+  backupsCreated             Backup[]                 @relation("BackupCreatedBy")
+  otpDeliveryLogs            OtpDeliveryLog[]         @relation("OtpLogUser")
+  otpVerifications           OtpVerificationLog[]     @relation("OtpVerificationUser")
+  otpAuditActions            OtpAuditLog[]            @relation("OtpAuditActor")
+  otpSettingsEdits           OtpSettings[]            @relation("OtpSettingsUpdatedBy")
+  trustedDevices             TrustedDevice[]
+  authPolicyEdits            AuthPolicySettings[]     @relation("AuthPolicyUpdatedBy")
+  sellerSharingSettingsEdits SellerSharingSettings[]  @relation("SellerSharingSettingsUpdatedBy")
 }
 
 enum OtpPurpose {
@@ -262,34 +272,43 @@ model OtpCode {
 }
 
 model SellerAccount {
-  id                    String              @id @default(cuid())
-  userId                String              @unique
-  user                  User                @relation(fields: [userId], references: [id])
-  businessName          String
-  registrationNumber    String?
-  verified              Boolean             @default(false)
-  logoUrl               String?
-  description           String?
-  district              String?
-  whatsappNumber        String?
-  callPhoneNumber       String?
+  id                 String  @id @default(cuid())
+  userId             String  @unique
+  user               User    @relation(fields: [userId], references: [id])
+  businessName       String
+  registrationNumber String?
+  verified           Boolean @default(false)
+  logoUrl            String?
+  description        String?
+  district           String?
+  whatsappNumber     String?
+  callPhoneNumber    String?
 
-  status                SellerAccountStatus @default(PENDING_APPROVAL)
-  rejectionReason       String?
-  suspendedAt           DateTime?
+  status          SellerAccountStatus @default(PENDING_APPROVAL)
+  rejectionReason String?
+  suspendedAt     DateTime?
 
   trialEndsAt           DateTime?
   trial7DayNoticeSentAt DateTime?
   trial3DayNoticeSentAt DateTime?
-  subscriptionStatus    SubscriptionStatus  @default(NONE)
+  subscriptionStatus    SubscriptionStatus @default(NONE)
   subscriptionExpiresAt DateTime?
 
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  slug                    String?             @unique
+  sharingStatus           SellerSharingStatus @default(ENABLED)
+  shareLinkPageViews      Int                 @default(0)
+  shareLinkListingClicks  Int                 @default(0)
+  shareLinkPhoneClicks    Int                 @default(0)
+  shareLinkWhatsappClicks Int                 @default(0)
+  shareLinkShareClicks    Int                 @default(0)
 
-  payments              SubscriptionPayment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments SubscriptionPayment[]
 
   @@index([status])
+  @@index([sharingStatus])
 }
 
 model SubscriptionPlan {
@@ -300,7 +319,7 @@ model SubscriptionPlan {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  payments     SubscriptionPayment[]
+  payments SubscriptionPayment[]
 }
 
 model PaymentMethod {
@@ -316,7 +335,7 @@ model PaymentMethod {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  payments      SubscriptionPayment[]
+  payments SubscriptionPayment[]
 }
 
 model SubscriptionPayment {
@@ -340,18 +359,18 @@ model SubscriptionPayment {
 }
 
 model ListingDeletionRequest {
-  id           String                 @id @default(cuid())
-  listingId    String
-  listing      Listing                @relation(fields: [listingId], references: [id])
-  sellerId     String
-  seller       User                   @relation("DeletionRequestedBy", fields: [sellerId], references: [id])
-  reason       String?
+  id             String                @id @default(cuid())
+  listingId      String
+  listing        Listing               @relation(fields: [listingId], references: [id])
+  sellerId       String
+  seller         User                  @relation("DeletionRequestedBy", fields: [sellerId], references: [id])
+  reason         String?
   previousStatus ListingStatus
-  status       DeletionRequestStatus  @default(PENDING)
-  requestedAt  DateTime               @default(now())
-  resolvedAt   DateTime?
-  resolvedById String?
-  resolvedBy   User?                  @relation("DeletionResolvedBy", fields: [resolvedById], references: [id])
+  status         DeletionRequestStatus @default(PENDING)
+  requestedAt    DateTime              @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolvedBy     User?                 @relation("DeletionResolvedBy", fields: [resolvedById], references: [id])
 
   @@index([status])
 }
@@ -370,20 +389,20 @@ model Notification {
 }
 
 model Brand {
-  id          String      @id @default(cuid())
-  name        String      @unique
-  slug        String      @unique
+  id            String     @id @default(cuid())
+  name          String     @unique
+  slug          String     @unique
   originCountry String?
-  logoUrl     String?
-  history     String?
-  createdAt   DateTime    @default(now())
-  models      CarModel[]
+  logoUrl       String?
+  history       String?
+  createdAt     DateTime   @default(now())
+  models        CarModel[]
 }
 
 model CarModel {
-  id                     String   @id @default(cuid())
+  id                     String     @id @default(cuid())
   brandId                String
-  brand                  Brand    @relation(fields: [brandId], references: [id])
+  brand                  Brand      @relation(fields: [brandId], references: [id])
   name                   String
   slug                   String
   yearStart              Int
@@ -396,37 +415,37 @@ model CarModel {
   description            String?
   strengths              String?
   faults                 String?
-  partAvailabilityRating Int?     // 1-5, community-rated
-  isClassic              Boolean  @default(false)
-  baseValueMwk           Int?     // fallback estimated value when there's no listing history yet
-  createdAt              DateTime @default(now())
+  partAvailabilityRating Int? // 1-5, community-rated
+  isClassic              Boolean    @default(false)
+  baseValueMwk           Int? // fallback estimated value when there's no listing history yet
+  createdAt              DateTime   @default(now())
 
-  photos     ModelPhoto[]
-  listings   Listing[]
+  photos   ModelPhoto[]
+  listings Listing[]
 
   @@unique([brandId, slug])
   @@index([isClassic])
 }
 
 model ModelPhoto {
-  id           String    @id @default(cuid())
-  carModelId   String
-  carModel     CarModel  @relation(fields: [carModelId], references: [id])
-  url          String
-  caption      String?
+  id            String   @id @default(cuid())
+  carModelId    String
+  carModel      CarModel @relation(fields: [carModelId], references: [id])
+  url           String
+  caption       String?
   submittedById String?
-  submittedBy  User?     @relation(fields: [submittedById], references: [id])
-  approved     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
+  submittedBy   User?    @relation(fields: [submittedById], references: [id])
+  approved      Boolean  @default(true)
+  createdAt     DateTime @default(now())
 }
 
 model Listing {
-  id            String        @id @default(cuid())
-  sellerId      String
-  seller        User          @relation(fields: [sellerId], references: [id])
-  sellerType    SellerType    @default(PRIVATE)
-  carModelId    String?
-  carModel      CarModel?     @relation(fields: [carModelId], references: [id])
+  id         String     @id @default(cuid())
+  sellerId   String
+  seller     User       @relation(fields: [sellerId], references: [id])
+  sellerType SellerType @default(PRIVATE)
+  carModelId String?
+  carModel   CarModel?  @relation(fields: [carModelId], references: [id])
 
   title         String
   brandName     String
@@ -445,8 +464,8 @@ model Listing {
   description   String?
   videoUrl      String?
 
-  districtId    String?
-  district      District?     @relation(fields: [districtId], references: [id])
+  districtId String?
+  district   District? @relation(fields: [districtId], references: [id])
 
   status        ListingStatus @default(DRAFT)
   reviewNotes   String?
@@ -455,16 +474,16 @@ model Listing {
   boosted       Boolean       @default(false)
   viewCount     Int           @default(0)
 
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  expiresAt     DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime?
 
-  photos            ListingPhoto[]
-  favorites         Favorite[]
-  conversations     Conversation[]
-  reports           Report[]
-  reviews           Review[]
-  deletionRequests  ListingDeletionRequest[]
+  photos           ListingPhoto[]
+  favorites        Favorite[]
+  conversations    Conversation[]
+  reports          Report[]
+  reviews          Review[]
+  deletionRequests ListingDeletionRequest[]
 
   @@unique([sellerId, title])
   @@index([status])
@@ -497,13 +516,13 @@ model Favorite {
 }
 
 model SavedSearch {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  label     String
-  criteria  Json
-  notifyBySms Boolean @default(false)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  label       String
+  criteria    Json
+  notifyBySms Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }
 
 model Conversation {
@@ -550,14 +569,14 @@ model Review {
 }
 
 model Report {
-  id        String       @id @default(cuid())
-  listingId String
-  listing   Listing      @relation(fields: [listingId], references: [id])
+  id         String       @id @default(cuid())
+  listingId  String
+  listing    Listing      @relation(fields: [listingId], references: [id])
   reporterId String
-  reporter  User         @relation(fields: [reporterId], references: [id])
-  reason    String
-  status    ReportStatus @default(PENDING)
-  createdAt DateTime     @default(now())
+  reporter   User         @relation(fields: [reporterId], references: [id])
+  reason     String
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
 }
 
 model LoginAttempt {
@@ -576,45 +595,45 @@ model LoginAttempt {
 /// Singleton row (id is always "singleton") holding site-wide branding, contact,
 /// and configuration data managed through the Developer Panel.
 model SiteSettings {
-  id                     String   @id @default("singleton")
+  id String @id @default("singleton")
 
-  siteName               String   @default("Halesah Galimoto Hub")
-  tagline                String?
-  logoUrl                String?
-  faviconUrl             String?
-  primaryColor           String   @default("#137d54")
-  secondaryColor         String   @default("#0D2A4A")
-  fontFamily             String   @default("Inter")
+  siteName       String  @default("Halesah Galimoto Hub")
+  tagline        String?
+  logoUrl        String?
+  faviconUrl     String?
+  primaryColor   String  @default("#137d54")
+  secondaryColor String  @default("#0D2A4A")
+  fontFamily     String  @default("Inter")
 
-  contactEmail           String?
-  contactPhone           String?
-  whatsappNumber         String?
-  address                String?
-  companyName            String?
-  registrationNumber     String?
+  contactEmail       String?
+  contactPhone       String?
+  whatsappNumber     String?
+  address            String?
+  companyName        String?
+  registrationNumber String?
 
-  currency               String   @default("MWK")
-  timezone               String   @default("Africa/Blantyre")
-  taxRatePercent         Float?
+  currency       String @default("MWK")
+  timezone       String @default("Africa/Blantyre")
+  taxRatePercent Float?
 
-  maintenanceMode        Boolean  @default(false)
-  maintenanceMessage     String?
+  maintenanceMode    Boolean @default(false)
+  maintenanceMessage String?
 
-  facebookUrl            String?
-  twitterUrl             String?
-  instagramUrl           String?
-  tiktokUrl              String?
+  facebookUrl  String?
+  twitterUrl   String?
+  instagramUrl String?
+  tiktokUrl    String?
 
-  smtpHost               String?
-  smtpPort               Int?
-  smtpUsername           String?
-  smtpPassword           String?
-  smtpFromEmail          String?
+  smtpHost      String?
+  smtpPort      Int?
+  smtpUsername  String?
+  smtpPassword  String?
+  smtpFromEmail String?
 
-  notifyEmailEnabled     Boolean  @default(true)
-  notifyWhatsappEnabled  Boolean  @default(true)
+  notifyEmailEnabled    Boolean @default(true)
+  notifyWhatsappEnabled Boolean @default(true)
 
-  updatedAt              DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 model SiteSettingsHistory {
@@ -679,15 +698,15 @@ enum BackupStatus {
 }
 
 model Backup {
-  id            String       @id @default(cuid())
-  type          BackupType
-  status        BackupStatus @default(PENDING)
-  filename      String
-  sizeBytes     Int?
-  errorMessage  String?
-  createdById   String?
-  createdBy     User?        @relation("BackupCreatedBy", fields: [createdById], references: [id])
-  createdAt     DateTime     @default(now())
+  id           String       @id @default(cuid())
+  type         BackupType
+  status       BackupStatus @default(PENDING)
+  filename     String
+  sizeBytes    Int?
+  errorMessage String?
+  createdById  String?
+  createdBy    User?        @relation("BackupCreatedBy", fields: [createdById], references: [id])
+  createdAt    DateTime     @default(now())
 
   @@index([createdAt])
 }
@@ -699,14 +718,14 @@ model Backup {
 /// Exactly one PRIMARY row per channel is treated as "active"; BACKUP rows
 /// are tried in ascending `priority` order if the primary send fails.
 model OtpProviderConfig {
-  id                   String            @id @default(cuid())
+  id                   String          @id @default(cuid())
   providerKey          String
   channel              OtpChannel
   label                String
-  environment          OtpEnvironment    @default(PRODUCTION)
-  chainRole            OtpProviderRole   @default(PRIMARY)
-  priority             Int               @default(0)
-  isActive             Boolean           @default(false)
+  environment          OtpEnvironment  @default(PRODUCTION)
+  chainRole            OtpProviderRole @default(PRIMARY)
+  priority             Int             @default(0)
+  isActive             Boolean         @default(false)
   credentialsEncrypted String
   dailyLimit           Int?
   monthlyLimit         Int?
@@ -715,8 +734,8 @@ model OtpProviderConfig {
   lastTestResponse     String?
   lastTestError        String?
   lastTestResponseMs   Int?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 
   deliveryLogs OtpDeliveryLog[]
 
@@ -727,27 +746,27 @@ model OtpProviderConfig {
 /// Singleton row (id is always "singleton") holding all OTP behavior
 /// settings configured from the Developer Panel.
 model OtpSettings {
-  id                     String   @id @default("singleton")
-  otpEnabled             Boolean  @default(true)
-  otpLength              Int      @default(6)
+  id                     String    @id @default("singleton")
+  otpEnabled             Boolean   @default(true)
+  otpLength              Int       @default(6)
   otpFormat              OtpFormat @default(NUMERIC)
-  otpExpiryMinutes       Int      @default(10)
-  maxVerifyAttempts      Int      @default(5)
-  maxResendAttempts      Int      @default(3)
-  resendCooldownSeconds  Int      @default(60)
-  maxRequestsPerHour     Int      @default(5)
-  maxRequestsPerDay      Int      @default(20)
-  lockoutDurationMinutes Int      @default(30)
+  otpExpiryMinutes       Int       @default(10)
+  maxVerifyAttempts      Int       @default(5)
+  maxResendAttempts      Int       @default(3)
+  resendCooldownSeconds  Int       @default(60)
+  maxRequestsPerHour     Int       @default(5)
+  maxRequestsPerDay      Int       @default(20)
+  lockoutDurationMinutes Int       @default(30)
   allowedCountries       String?
   blockedCountries       String?
-  defaultCountryCode     String   @default("+265")
-  channelPriority        Json     @default("[\"SMS\", \"WHATSAPP\", \"EMAIL\"]")
+  defaultCountryCode     String    @default("+265")
+  channelPriority        Json      @default("[\"SMS\", \"WHATSAPP\", \"EMAIL\"]")
   webhookDeliveryUrl     String?
   webhookVerificationUrl String?
   webhookFailureUrl      String?
-  updatedAt              DateTime @updatedAt
+  updatedAt              DateTime  @updatedAt
   updatedById            String?
-  updatedBy              User?    @relation("OtpSettingsUpdatedBy", fields: [updatedById], references: [id])
+  updatedBy              User?     @relation("OtpSettingsUpdatedBy", fields: [updatedById], references: [id])
 }
 
 /// Customizable message templates per purpose + channel. {{OTP}}, {{APP_NAME}},
@@ -766,11 +785,11 @@ model OtpTemplate {
 
 /// One row per delivery attempt — the "OTP Requests" + delivery log table.
 model OtpDeliveryLog {
-  id               String            @id @default(cuid())
+  id               String             @id @default(cuid())
   otpCodeId        String?
-  otpCode          OtpCode?          @relation(fields: [otpCodeId], references: [id])
+  otpCode          OtpCode?           @relation(fields: [otpCodeId], references: [id])
   userId           String?
-  user             User?             @relation("OtpLogUser", fields: [userId], references: [id])
+  user             User?              @relation("OtpLogUser", fields: [userId], references: [id])
   purpose          OtpPurpose
   channel          OtpChannel
   destination      String
@@ -784,7 +803,7 @@ model OtpDeliveryLog {
   ipAddress        String?
   userAgent        String?
   country          String?
-  createdAt        DateTime          @default(now())
+  createdAt        DateTime           @default(now())
 
   @@index([createdAt])
   @@index([status])
@@ -884,27 +903,73 @@ model TrustedDevice {
 /// policy and trusted-device settings, configured entirely from the
 /// Developer Panel — see src/lib/authPolicy.ts.
 model AuthPolicySettings {
-  id                             String   @id @default("singleton")
+  id String @id @default("singleton")
 
   // Enforcement policy
-  requireOtpOnRegistration       Boolean  @default(true)
-  requireOtpOnNewDevice          Boolean  @default(true)
-  requireOtpOnChangePhone        Boolean  @default(true)
-  requireOtpOnChangeEmail        Boolean  @default(true)
-  forceOtpForAdmins              Boolean  @default(true)
-  forceOtpForRoles               Json     @default("[]")
+  requireOtpOnRegistration Boolean @default(true)
+  requireOtpOnNewDevice    Boolean @default(true)
+  requireOtpOnChangePhone  Boolean @default(true)
+  requireOtpOnChangeEmail  Boolean @default(true)
+  forceOtpForAdmins        Boolean @default(true)
+  forceOtpForRoles         Json    @default("[]")
 
   // Trusted devices
-  trustedDevicesEnabled          Boolean  @default(true)
-  trustedDeviceValidityDays      Int      @default(30)
-  maxTrustedDevicesPerUser       Int      @default(5)
-  forceOtpAfterDeviceExpiry      Boolean  @default(true)
-  forceOtpAfterLogout            Boolean  @default(false)
-  forceOtpAfterEmailChange       Boolean  @default(true)
-  forceOtpAfterPhoneChange       Boolean  @default(true)
-  forceOtpAfterSuspiciousLogin   Boolean  @default(true)
+  trustedDevicesEnabled        Boolean @default(true)
+  trustedDeviceValidityDays    Int     @default(30)
+  maxTrustedDevicesPerUser     Int     @default(5)
+  forceOtpAfterDeviceExpiry    Boolean @default(true)
+  forceOtpAfterLogout          Boolean @default(false)
+  forceOtpAfterEmailChange     Boolean @default(true)
+  forceOtpAfterPhoneChange     Boolean @default(true)
+  forceOtpAfterSuspiciousLogin Boolean @default(true)
 
-  updatedAt                      DateTime @updatedAt
-  updatedById                    String?
-  updatedBy                      User?    @relation("AuthPolicyUpdatedBy", fields: [updatedById], references: [id])
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("AuthPolicyUpdatedBy", fields: [updatedById], references: [id])
+}
+
+/// Singleton row (id is always "singleton") holding the Seller Listing Share
+/// Link feature configuration, managed from Developer Panel → Marketplace
+/// Features → Seller Inventory Sharing. Per-seller enable/disable/suspend is
+/// tracked on SellerAccount.sharingStatus instead (see Manager Panel).
+model SellerSharingSettings {
+  id String @id @default("singleton")
+
+  enabled Boolean @default(true)
+
+  allowCopyLink      Boolean @default(true)
+  allowWhatsappShare Boolean @default(true)
+  allowFacebookShare Boolean @default(true)
+  allowTwitterShare  Boolean @default(true)
+  allowTelegramShare Boolean @default(true)
+  allowEmailShare    Boolean @default(true)
+  allowNativeShare   Boolean @default(true)
+
+  urlPrefix       String @default("seller")
+  slugFormat      String @default("BUSINESS_NAME")
+  fallbackUrl     String @default("/")
+  disabledMessage String @default("Inventory sharing is currently disabled.")
+
+  seoIndexing       Boolean @default(true)
+  seoSitemap        Boolean @default(true)
+  seoStructuredData Boolean @default(true)
+  seoOpenGraph      Boolean @default(true)
+  seoTwitterCard    Boolean @default(true)
+
+  analyticsPageViews      Boolean @default(true)
+  analyticsListingClicks  Boolean @default(true)
+  analyticsPhoneClicks    Boolean @default(true)
+  analyticsWhatsappClicks Boolean @default(true)
+  analyticsShareCounts    Boolean @default(true)
+
+  securityRequireVerification Boolean @default(false)
+  securityHideLocation        Boolean @default(false)
+  securityHidePhone           Boolean @default(false)
+  securityHideWhatsapp        Boolean @default(false)
+  securityRateLimitEnabled    Boolean @default(false)
+  securityRateLimitPerMinute  Int     @default(30)
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("SellerSharingSettingsUpdatedBy", fields: [updatedById], references: [id])
 }

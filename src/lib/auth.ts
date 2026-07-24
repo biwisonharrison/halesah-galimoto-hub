@@ -33,6 +33,12 @@ export async function requireDeveloper() {
   return user;
 }
 
+export async function requireManager() {
+  const user = await requireUser();
+  if (user.role !== "MANAGER" && user.role !== "ADMIN" && user.role !== "DEVELOPER") throw new Error("FORBIDDEN");
+  return user;
+}
+
 export async function requireApprovedSeller() {
   const user = await requireUser();
   if (!user.sellerAccount || user.sellerAccount.status !== "APPROVED") {

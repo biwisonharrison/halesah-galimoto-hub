@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatMWK } from "@/lib/format";
@@ -39,17 +40,30 @@ export default async function LookupResultsPage({
 
   const model = await prisma.carModel.findUnique({
     where: { brandId_slug: { brandId: brand.id, slug: modelSlug } },
-    include: { photos: true },
+    include: { photos: { where: { approved: true }, orderBy: { createdAt: "desc" } } },
   });
   if (!model) notFound();
 
-  const priceAgg = await prisma.listing.aggregate({
-    where: { carModelId: model.id, status: "ACTIVE" },
-    _avg: { priceMwk: true },
-    _count: true,
-  });
+  const [priceAgg, modelListings] = await Promise.all([
+    prisma.listing.aggregate({
+      where: { carModelId: model.id, status: "ACTIVE" },
+      _avg: { priceMwk: true },
+      _count: true,
+    }),
+    prisma.listing.findMany({
+      where: { carModelId: model.id, status: "ACTIVE" },
+      include: { photos: { orderBy: { position: "asc" } } },
+      orderBy: { createdAt: "desc" },
+      take: 9,
+    }),
+  ]);
 
   const estimatedValue = priceAgg._avg.priceMwk ?? model.baseValueMwk ?? null;
+
+  const listingsWithPhotos = modelListings.filter((listing) => listing.photos.length > 0);
+  const curatedPhoto = model.photos[0] ?? null;
+  const heroListingPhoto = listingsWithPhotos[0]?.photos[0] ?? null;
+  const heroPhotoUrl = curatedPhoto?.url ?? heroListingPhoto?.url ?? null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
@@ -66,8 +80,18 @@ export default async function LookupResultsPage({
         {model.yearStart} {model.yearEnd ? `to ${model.yearEnd}` : "to present"} · {BODY_LABELS[model.bodyType]}
       </p>
 
-      <div className="relative mt-6 h-56 w-full overflow-hidden rounded-2xl">
-        <CarIllustration bodyType={model.bodyType} seed={model.slug} label={`${brand.name} ${model.name}`} />
+      <div className="relative mt-6 h-56 w-full overflow-hidden rounded-2xl bg-gray-100">
+        {heroPhotoUrl ? (
+          <Image
+            src={heroPhotoUrl}
+            alt={`${brand.name} ${model.name}`}
+            fill
+            priority
+            className="object-cover"
+          />
+        ) : (
+          <CarIllustration bodyType={model.bodyType} seed={model.slug} label={`${brand.name} ${model.name}`} />
+        )}
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-3">
@@ -96,6 +120,34 @@ export default async function LookupResultsPage({
               Community editable and moderated. Spotted something wrong? Let us know once accounts open up.
             </p>
           </section>
+
+          {listingsWithPhotos.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-ink">
+                Real {model.name} listings on Halesah Galimoto Hub
+              </h2>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {listingsWithPhotos.map((listing) => (
+                  <Link
+                    key={listing.id}
+                    href={`/marketplace/${listing.id}`}
+                    className="group relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100"
+                  >
+                    <Image
+                      src={listing.photos[0].url}
+                      alt={listing.title}
+                      fill
+                      sizes="(min-width: 768px) 33vw, 50vw"
+                      className="object-cover transition group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-xs font-semibold text-white">
+                      {formatMWK(listing.priceMwk)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <aside className="space-y-6">
